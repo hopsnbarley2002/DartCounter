@@ -131,6 +131,7 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw
 .pad .fn { font-size: 18px; text-transform: uppercase; letter-spacing: 1px; color: var(--chalk-dim); }
 .msg { min-height: 22px; font-size: 16px; color: #ffb3a8; }
 .msg.ok { color: var(--gold); }
+.msg .bust-btn { margin-left: 6px; padding: 4px 10px; font-size: 14px; vertical-align: middle; }
 
 .prompt { display: grid; gap: 12px; text-align: center; padding-block: 8px; }
 .prompt h2 { font-family: var(--f-chalk); font-size: 30px; margin: 0; color: var(--gold); text-wrap: balance; }
@@ -140,7 +141,34 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw
 
 /* History */
 .hist h3, .setup h3 { margin: 0; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--chalk-dim); font-weight: 600; }
-.hist ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; }
+.hist ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 520px; overflow-y: auto; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab {
+  background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px;
+  padding: 4px 12px 8px; font-size: 15px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--chalk-dim);
+}
+.tab:hover { color: var(--chalk); }
+.tab[aria-selected="true"] { color: var(--chalk); border-bottom-color: var(--gold); }
+
+/* Chalk scoreboard: scored | left for each team, like the board on the wall */
+.chalk h3 { margin: 0; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--chalk-dim); font-weight: 600; }
+.chalk-scroll { max-height: 520px; overflow: auto; }
+.chalk table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: var(--f-chalk); font-variant-numeric: tabular-nums; }
+.chalk th, .chalk td { text-align: center; padding: 3px 4px; border-left: 1.5px solid rgba(238, 236, 227, 0.45); }
+.chalk tr > :first-child { border-left: 0; }
+.chalk .split { border-left: 3px solid rgba(238, 236, 227, 0.75); }
+.chalk thead th { position: sticky; top: 0; background: var(--board-2); z-index: 1; }
+.chalk .tn th { font-size: 19px; font-weight: 700; padding-top: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chalk .tn th[data-t="0"] { color: var(--red); }
+.chalk .tn th[data-t="1"] { color: var(--green); }
+.chalk .cols th { font-family: var(--f-num); font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--chalk-dim); border-bottom: 2px solid rgba(238, 236, 227, 0.75); padding-bottom: 5px; }
+.chalk td { font-size: 22px; line-height: 1.25; }
+.chalk td.sc { color: var(--chalk-dim); }
+.chalk td.left { color: var(--chalk); font-weight: 700; }
+.chalk td.bust { color: #ffb3a8; text-decoration: line-through; text-decoration-thickness: 2px; }
+.chalk td.out { color: var(--gold); }
+.chalk td.next { box-shadow: inset 0 -2px 0 var(--gold); }
+.chalk .start td { color: var(--chalk-dim); font-size: 19px; }
 .hist li {
   display: grid; grid-template-columns: 10px 1fr auto auto; gap: 10px; align-items: baseline;
   padding: 5px 4px; border-bottom: 1px dashed var(--line); font-variant-numeric: tabular-nums;
@@ -241,9 +269,19 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw
 
     <section class="play">
       <div class="panel" id="inputPanel"></div>
-      <div class="panel hist">
-        <h3 id="histTitle">This leg</h3>
-        <ol id="hist"></ol>
+      <div class="panel side">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" class="tab" id="chalkTitle" data-tab="board" aria-selected="true" aria-controls="paneBoard">Scoreboard</button>
+          <button type="button" role="tab" class="tab" id="histTitle" data-tab="hist" aria-selected="false" aria-controls="paneHist">Throws</button>
+        </div>
+        <div class="chalk" id="paneBoard" role="tabpanel">
+          <div class="chalk-scroll" id="chalkScroll">
+            <table id="chalk"></table>
+          </div>
+        </div>
+        <div class="hist" id="paneHist" role="tabpanel" hidden>
+          <ol id="hist"></ol>
+        </div>
       </div>
     </section>
   </div>
@@ -376,6 +414,11 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw
       entry = ""; return render();
     }
     const after = rem - score;
+    if (after < 0) {
+      setMsg(`${S.setup.teams[team].name} only need ${rem}, so ${score} is too many. Check the score, or record it as a bust.`);
+      message.bust = score;
+      entry = ""; return render();
+    }
     if (after === 0) {
       if (S.setup.doubleOut && !checkout(score)) {
         setMsg(score + " isn't a finish with a double. Check the total.");
@@ -514,7 +557,7 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw
           <button type="button" data-key="0">0</button>
           <button type="button" class="enter" data-key="enter">Enter</button>
         </div>
-        <div class="msg ${message.ok ? "ok" : ""}" role="status">${esc(message.text)}</div>
+        <div class="msg ${message.ok ? "ok" : ""}" role="status">${esc(message.text)}${message.bust ? ` <button class="btn danger bust-btn" type="button" data-act="bust">Record ${message.bust} as bust</button>` : ""}</div>
         <div class="keys">Keyboard: type the score, Enter to submit, Backspace to correct, Ctrl+Z to undo</div>`;
     }
     if (winner !== null || pending) {
@@ -536,6 +579,37 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw
         <span class="hs ${t.bust ? "bust" : t.out ? "out" : ""}">${t.bust ? "Bust " + t.score : t.score}</span>
         <span class="hr">${rem}</span>
       </li>`).join("") : `<li class="empty">No throws yet. ${esc(teams[legStarter()].name)} throw first.</li>`;
+
+    // Chalk scoreboard
+    const cols = [[], []];
+    const left = [S.setup.start, S.setup.start];
+    lt.forEach(t => {
+      if (!t.bust) left[t.team] -= t.score;
+      cols[t.team].push({ score: t.score, bust: t.bust, out: t.out, left: left[t.team] });
+    });
+    const nextTeam = winner === null && !pending ? cur.team : null;
+    const rowCount = Math.max(cols[0].length, cols[1].length, 1) + (nextTeam !== null && cols[nextTeam].length >= Math.max(cols[0].length, cols[1].length) ? 1 : 0);
+    const cell = (ti, i) => {
+      const c = cols[ti][i];
+      const split = ti === 1 ? " split" : "";
+      if (!c) {
+        const isNext = nextTeam === ti && i === cols[ti].length;
+        return `<td class="sc${split}${isNext ? " next" : ""}"></td><td class="left${isNext ? " next" : ""}"></td>`;
+      }
+      const cls = c.bust ? "bust" : c.out ? "out" : "";
+      return `<td class="sc${split} ${cls}">${c.score}</td><td class="left ${c.out ? "out" : ""}">${c.left}</td>`;
+    };
+    let body = `<tr class="start"><td class="sc"></td><td>${S.setup.start}</td><td class="sc split"></td><td>${S.setup.start}</td></tr>`;
+    for (let i = 0; i < rowCount; i++) body += `<tr>${cell(0, i)}${cell(1, i)}</tr>`;
+    $("chalkTitle").textContent = `Leg ${S.legNo + 1} scoreboard`;
+    $("chalk").innerHTML = `
+      <thead>
+        <tr class="tn"><th colspan="2" data-t="0">${esc(teams[0].name)}</th><th colspan="2" class="split" data-t="1">${esc(teams[1].name)}</th></tr>
+        <tr class="cols"><th>Scored</th><th>Left</th><th class="split">Scored</th><th>Left</th></tr>
+      </thead>
+      <tbody>${body}</tbody>`;
+    const sc = $("chalkScroll");
+    sc.scrollTop = sc.scrollHeight;
   }
 
   // ---------- Setup ----------
@@ -633,6 +707,21 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw
     else if (b.dataset.out) confirmOut(Number(b.dataset.out));
     else if (b.dataset.act === "next") nextLeg();
     else if (b.dataset.act === "cancel") { pending = null; render(); }
+    else if (b.dataset.act === "bust" && message.bust && legWinner() === null && !pending) {
+      const { team, player } = current();
+      const score = message.bust;
+      S.turns.push({ leg: S.legNo, team, player, score, bust: true, out: false, darts: 3 });
+      setMsg(`Bust. ${S.setup.teams[team].name} stay on ${remaining(team)}.`);
+      save(); render();
+    }
+    else if (b.dataset.tab) {
+      const board = b.dataset.tab === "board";
+      $("paneBoard").hidden = !board;
+      $("paneHist").hidden = board;
+      $("chalkTitle").setAttribute("aria-selected", String(board));
+      $("histTitle").setAttribute("aria-selected", String(!board));
+      if (board) $("chalkScroll").scrollTop = $("chalkScroll").scrollHeight;
+    }
   });
   $("undoBtn").onclick = undo;
   document.addEventListener("keydown", e => {
