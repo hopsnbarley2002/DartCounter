@@ -44,6 +44,7 @@ body {
 button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 16px; }
+.game { display: grid; gap: 16px; }
 
 /* Header */
 header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; justify-content: space-between; }
@@ -201,7 +202,7 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; 
       <h1>Dart Counter</h1>
       <span class="legs" id="legsLabel"></span>
     </div>
-    <div class="tools">
+    <div class="tools" id="tools">
       <button class="btn" id="undoBtn" type="button">Undo</button>
       <button class="btn" id="setupBtn" type="button">Match setup</button>
       <button class="btn primary" id="newGameBtn" type="button">New game</button>
@@ -230,15 +231,17 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; 
     </div>
   </section>
 
-  <section class="teams" id="teams"></section>
+  <div class="game" id="game">
+    <section class="teams" id="teams"></section>
 
-  <section class="play">
-    <div class="panel" id="inputPanel"></div>
-    <div class="panel hist">
-      <h3 id="histTitle">This leg</h3>
-      <ol id="hist"></ol>
-    </div>
-  </section>
+    <section class="play">
+      <div class="panel" id="inputPanel"></div>
+      <div class="panel hist">
+        <h3 id="histTitle">This leg</h3>
+        <ol id="hist"></ol>
+      </div>
+    </section>
+  </div>
 </div>
 
 <script>
@@ -553,10 +556,21 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; 
     $("setupReset").hidden = isNew;
     $("setupCancel").textContent = isNew ? (S.turns.length ? "Back to current game" : "Cancel") : "Close";
     $("setup").hidden = false;
+    showGame(!isNew);
     if (isNew) {
       $("setup").scrollIntoView({ block: "start" });
       const first = $("tn0"); first.focus(); first.select();
     }
+  }
+  // The scoreboard stays out of sight while the New game screen is up
+  function showGame(on) {
+    $("game").hidden = !on;
+    $("tools").hidden = !on;
+    $("legsLabel").hidden = !on;
+  }
+  function closeSetup() {
+    $("setup").hidden = true;
+    showGame(true);
   }
   function startMatch() {
     readNames();
@@ -565,7 +579,7 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; 
     S.setup.firstTeam = Number($("optFirst").value);
     S.turns = []; S.legNo = 0; entry = ""; pending = null;
     setMsg(`New game. ${S.setup.teams[S.setup.firstTeam].name} throw first.`, true);
-    save(); $("setup").hidden = true; render();
+    save(); closeSetup(); render();
   }
   function readNames() {
     S.setup.teams.forEach((t, ti) => {
@@ -588,8 +602,8 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; 
   $("setup").addEventListener("keydown", e => {
     if (e.key === "Enter" && e.target.matches("input[type=text]") && !$("setupStart").hidden) { e.preventDefault(); startMatch(); }
   });
-  $("setupCancel").onclick = () => { $("setup").hidden = true; };
-  $("setupSave").onclick = () => { readNames(); save(); $("setup").hidden = true; setMsg("Names saved.", true); render(); };
+  $("setupCancel").onclick = closeSetup;
+  $("setupSave").onclick = () => { readNames(); save(); closeSetup(); setMsg("Names saved.", true); render(); };
   $("setupReset").onclick = () => {
     if (!resetArmed && S.turns.length) {
       resetArmed = true; $("setupReset").textContent = "Tap again to clear all scores";
@@ -617,7 +631,7 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; 
   });
   $("undoBtn").onclick = undo;
   document.addEventListener("keydown", e => {
-    if (!$("setup").hidden && e.target.closest("#setup")) return;
+    if ($("game").hidden || (!$("setup").hidden && e.target.closest("#setup"))) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); return undo(); }
     if (pending && /^[123]$/.test(e.key)) return confirmOut(Number(e.key));
     if (/^\d$/.test(e.key)) key(e.key);
