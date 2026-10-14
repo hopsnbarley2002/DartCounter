@@ -48,8 +48,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* Header */
 header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; justify-content: space-between; }
-.brand { display: flex; align-items: baseline; gap: 12px; }
-h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; letter-spacing: 0.5px; }
+.brand { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; }
+.titles { display: grid; gap: 2px; }
+.app-name { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
+h1 { font-family: var(--f-chalk); font-weight: 700; font-size: clamp(24px, 4.5vw, 34px); line-height: 1.15; margin: 0; letter-spacing: 0.5px; text-wrap: balance; }
 .legs { font-size: 18px; color: var(--chalk-dim); letter-spacing: 1px; text-transform: uppercase; font-variant-numeric: tabular-nums; }
 .legs b { color: var(--chalk); font-size: 22px; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -199,7 +201,10 @@ h1 { font-family: var(--f-chalk); font-weight: 700; font-size: 30px; margin: 0; 
 <div class="wrap">
   <header>
     <div class="brand">
-      <h1>Dart Counter</h1>
+      <div class="titles">
+        <span class="app-name">Dart Counter</span>
+        <h1>RCL Branch 594 Mixed Darts</h1>
+      </div>
       <span class="legs" id="legsLabel"></span>
     </div>
     <div class="tools" id="tools">
